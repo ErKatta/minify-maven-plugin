@@ -21,12 +21,14 @@ package com.samaxes.maven.minify.plugin;
 import com.google.common.collect.Lists;
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
+import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
 import com.samaxes.maven.minify.common.ClosureConfig;
 import com.samaxes.maven.minify.common.JavaScriptErrorReporter;
 import com.samaxes.maven.minify.common.YuiConfig;
 import com.samaxes.maven.minify.plugin.MinifyMojo.Engine;
 import com.yahoo.platform.yui.compressor.JavaScriptCompressor;
 import org.apache.maven.plugin.logging.Log;
+import org.mozilla.javascript.EcmaError;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -105,7 +107,11 @@ public class ProcessJSFilesTask extends ProcessFilesTask {
                     CompilerOptions options = new CompilerOptions();
                     closureConfig.getCompilationLevel().setOptionsForCompilationLevel(options);
                     options.setOutputCharset(charset);
-                    options.setLanguageIn(closureConfig.getLanguageIn());
+                    LanguageMode languageIn = closureConfig.getLanguageIn();
+                    options.setLanguageIn(languageIn);
+                    if(languageIn.equals(LanguageMode.ECMASCRIPT5) || languageIn.equals(LanguageMode.ECMASCRIPT6)){
+                    	options.setWarningLevel(DiagnosticGroups.ES5_STRICT, CheckLevel.OFF);
+                    }
                     options.setLanguageOut(closureConfig.getLanguageOut());
                     options.setDependencyOptions(closureConfig.getDependencyOptions());
                     options.setColorizeErrorOutput(closureConfig.getColorizeErrorOutput());
