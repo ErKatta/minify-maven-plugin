@@ -113,6 +113,14 @@ public class MinifyMojo extends AbstractMojo {
 	 */
 	@Parameter(property = "nosuffix", defaultValue = "false")
 	private boolean nosuffix;
+	
+	/**
+	 * Delete the source file after minification.
+	 *
+	 * @since 2.0.2-IFIS
+	 */
+	@Parameter(property = "deleteSource", defaultValue = "false")
+	private boolean deleteSource;
 
 	/**
 	 * Skip the merge step. Minification will be applied to each source file
@@ -619,7 +627,7 @@ public class MinifyMojo extends AbstractMojo {
 	private ProcessFilesTask createCSSTask(YuiConfig yuiConfig, ClosureConfig closureConfig,
 			List<String> cssSourceFiles, List<String> cssSourceIncludes, List<String> cssSourceExcludes,
 			String cssFinalFile) throws FileNotFoundException {
-		return new ProcessCSSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix, nosuffix,
+		return new ProcessCSSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix,nosuffix,deleteSource,
 				skipMerge, skipMinify, webappSourceDir, webappTargetDir, cssSourceDir, cssSourceFiles,
 				cssSourceIncludes, cssSourceExcludes, cssTargetDir, cssFinalFile, cssEngine, yuiConfig);
 	}
@@ -627,7 +635,7 @@ public class MinifyMojo extends AbstractMojo {
 	private ProcessFilesTask createJSTask(YuiConfig yuiConfig, ClosureConfig closureConfig, List<String> jsSourceFiles,
 			List<String> jsSourceIncludes, List<String> jsSourceExcludes, String jsFinalFile)
 			throws FileNotFoundException {
-		return new ProcessJSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix, nosuffix,
+		return new ProcessJSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix,nosuffix,deleteSource,
 				skipMerge, skipMinify, webappSourceDir, webappTargetDir, jsSourceDir, jsSourceFiles, jsSourceIncludes,
 				jsSourceExcludes, jsTargetDir, jsFinalFile, jsEngine, yuiConfig, closureConfig);
 	}

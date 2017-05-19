@@ -73,6 +73,8 @@ public abstract class ProcessFilesTask implements Callable<Object> {
     private final boolean sourceFilesEmpty;
 
     private final boolean sourceIncludesEmpty;
+    
+    protected boolean deleteSource;
 
     /**
      * Task constructor.
@@ -84,6 +86,7 @@ public abstract class ProcessFilesTask implements Callable<Object> {
      *                        Otherwise, only byte-to-byte operations are used
      * @param suffix          final file name suffix
      * @param nosuffix        whether to use a suffix for the minified file name or not
+	 * @param deleteSource    whether to use delete the source file or not
      * @param skipMerge       whether to skip the merge step or not
      * @param skipMinify      whether to skip the minify step or not
      * @param webappSourceDir web resources source directory
@@ -99,7 +102,7 @@ public abstract class ProcessFilesTask implements Callable<Object> {
      * @throws FileNotFoundException when the given source file does not exist
      */
     public ProcessFilesTask(Log log, boolean verbose, Integer bufferSize, Charset charset, String suffix,
-                            boolean nosuffix, boolean skipMerge, boolean skipMinify, String webappSourceDir,
+                            boolean nosuffix, boolean deleteSource, boolean skipMerge, boolean skipMinify, String webappSourceDir,
                             String webappTargetDir, String inputDir, List<String> sourceFiles,
                             List<String> sourceIncludes, List<String> sourceExcludes, String outputDir,
                             String outputFilename, Engine engine, YuiConfig yuiConfig) throws FileNotFoundException {
@@ -108,6 +111,7 @@ public abstract class ProcessFilesTask implements Callable<Object> {
         this.bufferSize = bufferSize;
         this.charset = charset;
         this.suffix = suffix;
+        this.deleteSource = deleteSource;
         this.nosuffix = nosuffix;
         this.skipMerge = skipMerge;
         this.skipMinify = skipMinify;
@@ -162,6 +166,9 @@ public abstract class ProcessFilesTask implements Callable<Object> {
                         File minifiedFile = new File(targetPath, (nosuffix) ? mergedFile.getName()
                                 : FileUtils.removeExtension(mergedFile.getName()) + suffix + "." + FileUtils.extension(mergedFile.getName()));
                         minify(mergedFile, minifiedFile);
+                        if(deleteSource){
+                        	mergedFile.delete();
+                        }
                     }
                 } else if (skipMinify) {
                     File mergedFile = new File(targetDir, mergedFilename);
