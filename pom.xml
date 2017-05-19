@@ -4,7 +4,7 @@
 
     <groupId>com.samaxes.maven</groupId>
     <artifactId>minify-maven-plugin</artifactId>
-    <version>2.0.0-IFIS</version>
+    <version>2.0.3-IFIS</version>
     <packaging>maven-plugin</packaging>
 
     <name>Minify Maven Plugin</name>
@@ -101,7 +101,7 @@
         <dependency>
             <groupId>com.google.javascript</groupId>
             <artifactId>closure-compiler</artifactId>
-            <version>v20170124</version>
+            <version>v20170409</version>
             <optional>true</optional>
         </dependency>
         <dependency>
