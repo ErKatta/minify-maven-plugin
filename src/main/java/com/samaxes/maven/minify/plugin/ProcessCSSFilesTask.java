@@ -18,14 +18,23 @@
  */
 package com.samaxes.maven.minify.plugin;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
+import java.util.List;
+
+import org.apache.maven.plugin.logging.Log;
+
 import com.samaxes.maven.minify.common.YuiConfig;
 import com.samaxes.maven.minify.plugin.MinifyMojo.Engine;
 import com.yahoo.platform.yui.compressor.CssCompressor;
-import org.apache.maven.plugin.logging.Log;
-
-import java.io.*;
-import java.nio.charset.Charset;
-import java.util.List;
 
 /**
  * Task for merging and compressing CSS files.
@@ -57,12 +66,12 @@ public class ProcessCSSFilesTask extends ProcessFilesTask {
      * @param yuiConfig       YUI Compressor configuration
      * @throws FileNotFoundException when the given source file does not exist
      */
-    public ProcessCSSFilesTask(Log log, boolean verbose, Integer bufferSize, Charset charset, String suffix,
+    public ProcessCSSFilesTask(Log log, boolean verbose, Integer bufferSize, Charset charset, String suffix, String filter,
                                boolean nosuffix,boolean deleteSource, boolean skipMerge, boolean skipMinify, String webappSourceDir,
                                String webappTargetDir, String inputDir, List<String> sourceFiles,
                                List<String> sourceIncludes, List<String> sourceExcludes, String outputDir,
                                String outputFilename, Engine engine, YuiConfig yuiConfig) throws FileNotFoundException {
-        super(log, verbose, bufferSize, charset, suffix,nosuffix, deleteSource,skipMerge, skipMinify, webappSourceDir,
+        super(log, verbose, bufferSize, charset, suffix, filter, nosuffix, deleteSource,skipMerge, skipMinify, webappSourceDir,
                 webappTargetDir, inputDir, sourceFiles, sourceIncludes, sourceExcludes, outputDir, outputFilename,
                 engine, yuiConfig);
     }

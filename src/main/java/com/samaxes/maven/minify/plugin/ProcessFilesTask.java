@@ -18,22 +18,35 @@
  */
 package com.samaxes.maven.minify.plugin;
 
-import com.samaxes.maven.minify.common.SourceFilesEnumeration;
-import com.samaxes.maven.minify.common.YuiConfig;
-import com.samaxes.maven.minify.plugin.MinifyMojo.Engine;
-import org.apache.maven.plugin.logging.Log;
-import org.codehaus.plexus.util.DirectoryScanner;
-import org.codehaus.plexus.util.FileUtils;
-import org.codehaus.plexus.util.IOUtil;
-
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.SequenceInputStream;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.zip.GZIPOutputStream;
+
+import org.apache.maven.plugin.logging.Log;
+import org.codehaus.plexus.util.DirectoryScanner;
+import org.codehaus.plexus.util.FileUtils;
+import org.codehaus.plexus.util.IOUtil;
+
+import com.samaxes.maven.minify.common.SourceFilesEnumeration;
+import com.samaxes.maven.minify.common.YuiConfig;
+import com.samaxes.maven.minify.plugin.MinifyMojo.Engine;
 
 /**
  * Abstract class for merging and compressing a files list.
@@ -51,6 +64,8 @@ public abstract class ProcessFilesTask implements Callable<Object> {
     protected final Charset charset;
 
     protected final String suffix;
+    
+    protected final String filter;
 
     protected final boolean nosuffix;
 
@@ -85,6 +100,7 @@ public abstract class ProcessFilesTask implements Callable<Object> {
      * @param charset         if a character set is specified, a byte-to-char variant allows the encoding to be selected.
      *                        Otherwise, only byte-to-byte operations are used
      * @param suffix          final file name suffix
+     * @param filter          the pattern that that would be replaced in the source files before minification
      * @param nosuffix        whether to use a suffix for the minified file name or not
 	 * @param deleteSource    whether to use delete the source file or not
      * @param skipMerge       whether to skip the merge step or not
@@ -101,7 +117,7 @@ public abstract class ProcessFilesTask implements Callable<Object> {
      * @param yuiConfig       YUI Compressor configuration
      * @throws FileNotFoundException when the given source file does not exist
      */
-    public ProcessFilesTask(Log log, boolean verbose, Integer bufferSize, Charset charset, String suffix,
+    public ProcessFilesTask(Log log, boolean verbose, Integer bufferSize, Charset charset, String suffix, String filter,
                             boolean nosuffix, boolean deleteSource, boolean skipMerge, boolean skipMinify, String webappSourceDir,
                             String webappTargetDir, String inputDir, List<String> sourceFiles,
                             List<String> sourceIncludes, List<String> sourceExcludes, String outputDir,
@@ -111,6 +127,7 @@ public abstract class ProcessFilesTask implements Callable<Object> {
         this.bufferSize = bufferSize;
         this.charset = charset;
         this.suffix = suffix;
+        this.filter = filter;
         this.deleteSource = deleteSource;
         this.nosuffix = nosuffix;
         this.skipMerge = skipMerge;
@@ -131,6 +148,7 @@ public abstract class ProcessFilesTask implements Callable<Object> {
         }
         this.sourceFilesEmpty = sourceFiles.isEmpty();
         this.sourceIncludesEmpty = sourceIncludes.isEmpty();
+        
     }
 
     /**
@@ -165,7 +183,9 @@ public abstract class ProcessFilesTask implements Callable<Object> {
 
                         File minifiedFile = new File(targetPath, (nosuffix) ? mergedFile.getName()
                                 : FileUtils.removeExtension(mergedFile.getName()) + suffix + "." + FileUtils.extension(mergedFile.getName()));
-                        minify(mergedFile, minifiedFile);
+                        
+                        minify(mergedFile, minifiedFile);	
+                        
                         if(deleteSource){
                         	mergedFile.delete();
                         }
@@ -196,7 +216,7 @@ public abstract class ProcessFilesTask implements Callable<Object> {
         return null;
     }
 
-    /**
+	/**
      * Merges a list of source files. Create missing parent directories if needed.
      *
      * @param mergedFile output file resulting from the merged step
@@ -322,4 +342,27 @@ public abstract class ProcessFilesTask implements Callable<Object> {
 
         return includedFiles;
     }
+    
+    /**
+     * Creates an input stream filtering the given file content if necessary
+     * 
+     * @param file the file to convert to input stream
+     * @return the filtered input stream
+     * @throws IOException in case of issue risen during the file conversion
+     */
+	protected InputStream getFilteredInputStream(File file) throws IOException {
+		try {
+			log.info("FILTER USED:"+filter);
+			if (filter != null && !filter.trim().equals("")) {
+				String content = new String(Files.readAllBytes(file.toPath()));
+				return new ByteArrayInputStream(content.replace(filter, suffix).getBytes(StandardCharsets.UTF_8));
+			} else {
+				return new FileInputStream(file);
+			}
+		} catch (IOException e) {
+			log.error("Failed to filter the file ["
+					+ (verbose ? file.getPath() : file.getName()) + "].", e);
+			throw e;
+		}
+	}
 }

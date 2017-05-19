@@ -18,23 +18,40 @@
  */
 package com.samaxes.maven.minify.plugin;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.maven.plugin.logging.Log;
+
 import com.google.common.collect.Lists;
-import com.google.javascript.jscomp.*;
+import com.google.javascript.jscomp.CheckLevel;
+import com.google.javascript.jscomp.CommandLineRunner;
 import com.google.javascript.jscomp.Compiler;
+import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
+import com.google.javascript.jscomp.DiagnosticGroup;
+import com.google.javascript.jscomp.DiagnosticGroups;
+import com.google.javascript.jscomp.JSError;
+import com.google.javascript.jscomp.LightweightMessageFormatter;
+import com.google.javascript.jscomp.MessageFormatter;
+import com.google.javascript.jscomp.SourceFile;
+import com.google.javascript.jscomp.SourceMap;
 import com.samaxes.maven.minify.common.ClosureConfig;
 import com.samaxes.maven.minify.common.JavaScriptErrorReporter;
 import com.samaxes.maven.minify.common.YuiConfig;
 import com.samaxes.maven.minify.plugin.MinifyMojo.Engine;
 import com.yahoo.platform.yui.compressor.JavaScriptCompressor;
-import org.apache.maven.plugin.logging.Log;
-import org.mozilla.javascript.EcmaError;
-
-import java.io.*;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Task for merging and compressing JavaScript files.
@@ -69,13 +86,13 @@ public class ProcessJSFilesTask extends ProcessFilesTask {
      * @param closureConfig   Google Closure Compiler configuration
      * @throws FileNotFoundException when the given source file does not exist
      */
-    public ProcessJSFilesTask(Log log, boolean verbose, Integer bufferSize, Charset charset, String suffix,
+    public ProcessJSFilesTask(Log log, boolean verbose, Integer bufferSize, Charset charset, String suffix, String filter,
                               boolean nosuffix, boolean deleteSource, boolean skipMerge, boolean skipMinify, String webappSourceDir,
                               String webappTargetDir, String inputDir, List<String> sourceFiles,
                               List<String> sourceIncludes, List<String> sourceExcludes, String outputDir,
                               String outputFilename, Engine engine, YuiConfig yuiConfig, ClosureConfig closureConfig)
             throws FileNotFoundException {
-        super(log, verbose, bufferSize, charset, suffix, nosuffix, deleteSource, skipMerge, skipMinify, webappSourceDir,
+        super(log, verbose, bufferSize, charset, suffix, filter, nosuffix, deleteSource, skipMerge, skipMinify, webappSourceDir,
                 webappTargetDir, inputDir, sourceFiles, sourceIncludes, sourceExcludes, outputDir, outputFilename,
                 engine, yuiConfig);
 
@@ -95,7 +112,7 @@ public class ProcessJSFilesTask extends ProcessFilesTask {
             throw new RuntimeException("Unable to create target directory for: " + minifiedFile.getParentFile());
         }
 
-        try (InputStream in = new FileInputStream(mergedFile);
+        try (InputStream in = getFilteredInputStream(mergedFile);
              OutputStream out = new FileOutputStream(minifiedFile);
              InputStreamReader reader = new InputStreamReader(in, charset);
              OutputStreamWriter writer = new OutputStreamWriter(out, charset)) {
@@ -191,7 +208,7 @@ public class ProcessJSFilesTask extends ProcessFilesTask {
         logCompressionGains(mergedFile, minifiedFile);
     }
 
-    private void flushSourceMap(File sourceMapOutputFile, String minifyFileName, SourceMap sourceMap) {
+	private void flushSourceMap(File sourceMapOutputFile, String minifyFileName, SourceMap sourceMap) {
         try (FileWriter out = new FileWriter(sourceMapOutputFile)) {
             sourceMap.appendTo(out, minifyFileName);
         } catch (IOException e) {

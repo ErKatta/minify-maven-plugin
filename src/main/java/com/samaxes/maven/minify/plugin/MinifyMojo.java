@@ -18,14 +18,25 @@
  */
 package com.samaxes.maven.minify.plugin;
 
-import com.google.common.base.Strings;
-import com.google.gson.Gson;
-import com.google.javascript.jscomp.*;
-import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
-import com.samaxes.maven.minify.common.Aggregation;
-import com.samaxes.maven.minify.common.AggregationConfiguration;
-import com.samaxes.maven.minify.common.ClosureConfig;
-import com.samaxes.maven.minify.common.YuiConfig;
+import static com.google.common.collect.Lists.newArrayList;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -33,16 +44,20 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
-import java.io.*;
-import java.nio.charset.Charset;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
-import static com.google.common.collect.Lists.newArrayList;
+import com.google.common.base.Strings;
+import com.google.gson.Gson;
+import com.google.javascript.jscomp.CheckLevel;
+import com.google.javascript.jscomp.CompilationLevel;
+import com.google.javascript.jscomp.CompilerOptions;
+import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
+import com.google.javascript.jscomp.DependencyOptions;
+import com.google.javascript.jscomp.DiagnosticGroup;
+import com.google.javascript.jscomp.DiagnosticGroups;
+import com.google.javascript.jscomp.SourceFile;
+import com.samaxes.maven.minify.common.Aggregation;
+import com.samaxes.maven.minify.common.AggregationConfiguration;
+import com.samaxes.maven.minify.common.ClosureConfig;
+import com.samaxes.maven.minify.common.YuiConfig;
 
 /**
  * Goal for combining and minifying CSS and JavaScript files.
@@ -102,6 +117,24 @@ public class MinifyMojo extends AbstractMojo {
 	private String suffix;
 
 	/**
+	 * The pattern that that would be replaced in the source files before
+	 * minification
+	 *
+	 * @since 2.0.3-IFIS
+	 */
+	@Parameter(property = "filterSources", defaultValue = "false")
+	private boolean filterSources;
+
+	/**
+	 * The pattern that that would be replaced in the source files before
+	 * minification
+	 *
+	 * @since 2.0.3-IFIS
+	 */
+	@Parameter(property = "filter", defaultValue = "_NO_FILTER_SET_")
+	private String filter;
+
+	/**
 	 * Do not append a suffix to the minified output file name, independently of
 	 * the value in the {@code suffix} parameter.<br/>
 	 * <strong>Warning:</strong> when both the options {@code nosuffix} and
@@ -113,7 +146,7 @@ public class MinifyMojo extends AbstractMojo {
 	 */
 	@Parameter(property = "nosuffix", defaultValue = "false")
 	private boolean nosuffix;
-	
+
 	/**
 	 * Delete the source file after minification.
 	 *
@@ -500,6 +533,7 @@ public class MinifyMojo extends AbstractMojo {
 	 */
 	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
+
 		if (new File(webappSourceDir).exists()) {
 			getLog().info("Executing minification using the following base directory: " + webappSourceDir);
 		} else {
@@ -510,6 +544,8 @@ public class MinifyMojo extends AbstractMojo {
 			getLog().warn("Both merge and minify steps are configured to be skipped.");
 			return;
 		}
+
+		escapeFilter();
 
 		fillOptionalValues();
 
@@ -537,6 +573,20 @@ public class MinifyMojo extends AbstractMojo {
 			executor.shutdownNow();
 			throw new MojoExecutionException(e.getMessage(), e);
 		}
+	}
+
+	private void escapeFilter() throws MojoExecutionException {
+		if (!filterSources) {
+			filter = null;
+		} else {
+			if (filter.equals("_NO_FILTER_SET_")) {
+				getLog().error("Sources filtering enabled but no filter pattern has been provided!");
+				throw new MojoExecutionException("Sources filtering enabled but no filter pattern has been provided!");
+			} else {
+				filter = filter.replaceAll("\\#MVN_VAR:([^<]*)", "\\${$1}");
+			}
+		}
+
 	}
 
 	private void fillOptionalValues() {
@@ -627,16 +677,16 @@ public class MinifyMojo extends AbstractMojo {
 	private ProcessFilesTask createCSSTask(YuiConfig yuiConfig, ClosureConfig closureConfig,
 			List<String> cssSourceFiles, List<String> cssSourceIncludes, List<String> cssSourceExcludes,
 			String cssFinalFile) throws FileNotFoundException {
-		return new ProcessCSSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix,nosuffix,deleteSource,
-				skipMerge, skipMinify, webappSourceDir, webappTargetDir, cssSourceDir, cssSourceFiles,
-				cssSourceIncludes, cssSourceExcludes, cssTargetDir, cssFinalFile, cssEngine, yuiConfig);
+		return new ProcessCSSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix, filter,
+				nosuffix, deleteSource, skipMerge, skipMinify, webappSourceDir, webappTargetDir, cssSourceDir,
+				cssSourceFiles, cssSourceIncludes, cssSourceExcludes, cssTargetDir, cssFinalFile, cssEngine, yuiConfig);
 	}
 
 	private ProcessFilesTask createJSTask(YuiConfig yuiConfig, ClosureConfig closureConfig, List<String> jsSourceFiles,
 			List<String> jsSourceIncludes, List<String> jsSourceExcludes, String jsFinalFile)
 			throws FileNotFoundException {
-		return new ProcessJSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix,nosuffix,deleteSource,
-				skipMerge, skipMinify, webappSourceDir, webappTargetDir, jsSourceDir, jsSourceFiles, jsSourceIncludes,
-				jsSourceExcludes, jsTargetDir, jsFinalFile, jsEngine, yuiConfig, closureConfig);
+		return new ProcessJSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix, filter, nosuffix,
+				deleteSource, skipMerge, skipMinify, webappSourceDir, webappTargetDir, jsSourceDir, jsSourceFiles,
+				jsSourceIncludes, jsSourceExcludes, jsTargetDir, jsFinalFile, jsEngine, yuiConfig, closureConfig);
 	}
 }
