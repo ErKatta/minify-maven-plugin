@@ -541,10 +541,13 @@ public class MinifyMojo extends AbstractMojo {
 			return;
 		}
 		if (skipMerge && skipMinify) {
-			getLog().warn("Both merge and minify steps are configured to be skipped.");
-			return;
+			getLog().info("Both merge and minify steps are configured to be skipped.");
 		}
 
+		if(nosuffix){
+			suffix = "";
+		}
+		
 		escapeFilter();
 
 		fillOptionalValues();
