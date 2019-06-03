@@ -4,7 +4,7 @@
 
 	<groupId>com.samaxes.maven</groupId>
 	<artifactId>minify-maven-plugin</artifactId>
-	<version>2.0.5-IFIS</version>
+	<version>2.0.6-IFIS</version>
 	<packaging>maven-plugin</packaging>
 
 	<name>Minify Maven Plugin</name>
