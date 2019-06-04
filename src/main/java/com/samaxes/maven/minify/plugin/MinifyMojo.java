@@ -81,6 +81,20 @@ public class MinifyMojo extends AbstractMojo {
         SKIP_CSS
     }
 
+    /**
+     * Options used in the skip merge directive.
+     */
+    public enum DeleteSourceOption {
+        /** Delete both JS and CSS source files. */
+        TRUE,
+        /** Avoid source files deletion. */
+        FALSE,
+        /** Delete JS source files only. */
+        JS_ONLY,
+        /** Delete CSS source files only. */
+        CSS_ONLY
+    }
+
     /* ************** */
     /* Global Options */
     /* ************** */
@@ -146,8 +160,8 @@ public class MinifyMojo extends AbstractMojo {
      *
      * @since 2.0.2-IFIS
      */
-    @Parameter(property = "deleteSource", defaultValue = "false")
-    private boolean deleteSource;
+    @Parameter(property = "deleteSource", defaultValue = "FALSE")
+    private DeleteSourceOption deleteSource;
 
     /**
      * Skip the merge step. Minification will be applied to each source file individually.
@@ -605,10 +619,10 @@ public class MinifyMojo extends AbstractMojo {
     }
 
     private ProcessFilesTask createCSSTask(YuiConfig yuiConfig, ClosureConfig closureConfig, List<String> cssSourceFiles, List<String> cssSourceIncludes, List<String> cssSourceExcludes, String cssFinalFile) throws FileNotFoundException {
-        return new ProcessCSSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix, filter, nosuffix, deleteSource, (skipMerge.equals(SkipMergeOption.TRUE) || skipMerge.equals(SkipMergeOption.SKIP_CSS)), skipMinify, webappSourceDir, webappTargetDir, cssSourceDir, cssSourceFiles, cssSourceIncludes, cssSourceExcludes, cssTargetDir, cssFinalFile, cssEngine, yuiConfig);
+        return new ProcessCSSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix, filter, nosuffix, (deleteSource.equals(DeleteSourceOption.TRUE) || deleteSource.equals(DeleteSourceOption.CSS_ONLY)), (skipMerge.equals(SkipMergeOption.TRUE) || skipMerge.equals(SkipMergeOption.SKIP_CSS)), skipMinify, webappSourceDir, webappTargetDir, cssSourceDir, cssSourceFiles, cssSourceIncludes, cssSourceExcludes, cssTargetDir, cssFinalFile, cssEngine, yuiConfig);
     }
 
     private ProcessFilesTask createJSTask(YuiConfig yuiConfig, ClosureConfig closureConfig, List<String> jsSourceFiles, List<String> jsSourceIncludes, List<String> jsSourceExcludes, String jsFinalFile) throws FileNotFoundException {
-        return new ProcessJSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix, filter, nosuffix, deleteSource, (skipMerge.equals(SkipMergeOption.TRUE) || skipMerge.equals(SkipMergeOption.SKIP_JS)), skipMinify, webappSourceDir, webappTargetDir, jsSourceDir, jsSourceFiles, jsSourceIncludes, jsSourceExcludes, jsTargetDir, jsFinalFile, jsEngine, yuiConfig, closureConfig);
+        return new ProcessJSFilesTask(getLog(), verbose, bufferSize, Charset.forName(charset), suffix, filter, nosuffix, (deleteSource.equals(DeleteSourceOption.TRUE) || deleteSource.equals(DeleteSourceOption.JS_ONLY)), (skipMerge.equals(SkipMergeOption.TRUE) || skipMerge.equals(SkipMergeOption.SKIP_JS)), skipMinify, webappSourceDir, webappTargetDir, jsSourceDir, jsSourceFiles, jsSourceIncludes, jsSourceExcludes, jsTargetDir, jsFinalFile, jsEngine, yuiConfig, closureConfig);
     }
 }
